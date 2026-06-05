@@ -1,7 +1,6 @@
 # Autonomous Wall-Following to Line-Following Robot
 
-[![Demo Video](https://img.youtube.com/vi/XXXXXXXXXXX/0.jpg)](https://www.youtube.com/watch?v=XXXXXXXXXXX)
-> *Click above to watch demo video | Replace `XXXXXXXXXXX` with your YouTube video ID*
+[![Demo Video](https://www.linkedin.com/posts/muhammad-umar-470205377_robotics-esp32-embeddedsystems-ugcPost-7426727320171741184-qKT_?utm_source=share&utm_medium=member_desktop&rcm=ACoAAF0c7FQBAq2rTRdLSm2bP4Ak0SG9Vtf9ipY)
 
 ---
 
