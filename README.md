@@ -1,70 +1,177 @@
-# Wall-following-and-line-folowing
-Arduino code for a robot that autonomously navigates using 5 IR sensors for line following and an ultrasonic sensor for wall following.
+Perfect! Looking at your code, I can see exactly how everything is connected. You're right - the code itself contains all the wiring information. Let me give you a simplified **single-file README** that explains everything based on your actual code, with only one code file needed.
+
+---
+
+## Ready-to-Paste README.md (Single File Version)
+
+```markdown
+# Autonomous Wall-Following to Line-Following Robot
+
+[![Demo Video](https://img.youtube.com/vi/XXXXXXXXXXX/0.jpg)](https://www.youtube.com/watch?v=XXXXXXXXXXX)
+> *Click above to watch demo video | Replace `XXXXXXXXXXX` with your YouTube video ID*
 
 ---
 
 ## Project Overview
 
-This project was developed as the final assignment for my **Introduction to Robotics** course. The goal was to design a single autonomous robot capable of navigating two distinct environments without human intervention.
+This robot was developed as my final project for **Introduction to Robotics**. It autonomously navigates a course by first following a wall, then automatically switching to line-following mode when the wall ends.
 
-**The Core Challenge:** The robot starts in a corridor where it must follow a wall. When the corridor ends (the wall disappears), the robot must automatically detect this change, switch modes, and begin following a line on the floor.
+**Key Achievement:** Seamless state transition between two navigation modes using a finite state machine on ESP32.
 
-**Key Achievement:** Successfully implemented a **finite state machine** on an ESP32 that transitions between `WALL_FOLLOW` and `LINE_FOLLOW` states based on real-time sensor data.
+### How It Works (Simple Version)
+
+| Mode | What Happens | Sensors Used |
+|------|--------------|--------------|
+| **Wall Following** | Robot maintains 15cm distance from wall | 2x Ultrasonic (front & back/side) |
+| **Transition** | When wall ends, robot waits 10 seconds then checks for line | IR Array |
+| **Line Following** | Robot follows black line on white surface | 5x IR Sensors |
+
+---
+
+## Hardware Connections
+
+Based on the actual code, here's exactly how everything connects:
+
+### ESP32 Pin Mapping
+
+| Component | Pin | Purpose |
+|-----------|-----|---------|
+| **Motor Driver L298N** | | |
+| IN1 | GPIO 4 | Motor A direction |
+| IN2 | GPIO 5 | Motor A direction |
+| ENA | GPIO 14 | Motor A speed (PWM) |
+| IN3 | GPIO 12 | Motor B direction |
+| IN4 | GPIO 13 | Motor B direction |
+| ENB | GPIO 27 | Motor B speed (PWM) |
+| **Ultrasonic Sensors (HC-SR04)** | | |
+| Front TRIG | GPIO 32 | Send pulse |
+| Front ECHO | GPIO 33 | Receive pulse |
+| Back/Side TRIG | GPIO 25 | Send pulse |
+| Back/Side ECHO | GPIO 26 | Receive pulse |
+| **IR Sensor Array (5-Channel)** | | |
+| IR1 (Leftmost) | GPIO 15 | Line detection |
+| IR2 | GPIO 16 | Line detection |
+| IR3 (Center) | GPIO 17 | Line detection |
+| IR4 | GPIO 18 | Line detection |
+| IR5 (Rightmost) | GPIO 19 | Line detection |
+
+### Power Configuration
+- **ESP32 & Sensors:** Powered via USB or 5V pin
+- **Motors & L298N:** Separate 7.4V-12V battery (prevents ESP32 resets)
+- **PWM Frequency:** 100Hz with 8-bit resolution (0-255 speed values)
+
+---
+
+## Code Explanation
+
+The entire robot logic is contained in **one Arduino sketch** (`robot.ino`). Here's what the main functions do:
+
+| Function | What It Does |
+|----------|---------------|
+| `setup()` | Initializes pins, sets PWM frequency, starts serial monitor |
+| `followWallPID()` | Main wall-following logic with PID control. Target distance = 15cm |
+| `followLine()` | Line-following with PD control. Uses 5 IR sensors |
+| `checkForLine()` | Monitors IR sensors. Triggers mode switch after 10 seconds |
+| `readSonarFast()` | Reads ultrasonic sensor with EMA filter for smooth data |
+| `applySpeeds()` | Sets motor speeds with constraints (0-200 range) |
+
+### Key Parameters You Can Adjust
+
+```cpp
+// Wall Following (PID)
+#define TARGET_DIST 15        // Desired distance from wall (cm)
+Kp = 3.2;                     // Proportional gain
+Ki = 0.02;                    // Integral gain  
+Kd = 2.6;                     // Derivative gain
+
+// Line Following (PD)
+lineBaseSpeed = 100;          // Base speed (0-200)
+lineKp = 60;                  // Proportional gain
+lineKd = 1.75;                // Derivative gain
+
+// Timing
+WALL_FOLLOW_DELAY = 5000;     // Wait 5 seconds before allowing line detection
+lineDetectionStartTime = 250; // Verify line for 250ms before switching
+```
+
+### Sensor Logic Explained
+
+**IR Sensors (Line Detection):**
+- `LOW` = Black line detected
+- `HIGH` = White surface (or brown floor)
+- The robot ignores line detection if ALL sensors see white (brown floor case)
+
+**Ultrasonic Sensors:**
+- Front sensor (GPIO 32/33): Detects if wall continues ahead
+- Back/Side sensor (GPIO 25/26): Measures distance to side wall
+- EMA filter smooths out noisy readings
+
+**State Machine:**
+```
+START → WALL FOLLOW (5 sec minimum) → Check IR sensors → LINE FOLLOW
+                ↑                                              │
+                └──────────────────────────────────────────────┘
+                          (if line is lost)
+```
+
+---
+
+## How to Use This Code
+
+### 1. Install Arduino IDE & ESP32 Board
+- Download Arduino IDE from arduino.cc
+- Add ESP32 board: File → Preferences → Additional Boards Manager URLs
+- Add: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
+- Install ESP32 board via Boards Manager
+
+### 2. Required Libraries
+None! This code uses only built-in Arduino/ESP32 functions.
+
+### 3. Upload the Code
+```bash
+1. Open robot.ino in Arduino IDE
+2. Select Board: Tools → Board → ESP32 Dev Module
+3. Select Port: Tools → Port → (your COM port)
+4. Click Upload (→ arrow icon)
+```
+
+### 4. Calibration (Optional but Recommended)
+Open Serial Monitor (Tools → Serial Monitor) at 115200 baud.
+Watch the sensor readings and adjust:
+- `TARGET_DIST` if you want different wall distance
+- `lineKp` / `lineKd` if line following oscillates
+- `Kp/Ki/Kd` if wall following is too wobbly
+
+### 5. Run the Robot
+1. Power ESP32 via USB or 5V
+2. Power L298N via battery (7.4V-12V)
+3. Place robot against a wall
+4. The robot will:
+   - Follow wall for 5+ seconds
+   - When wall ends, wait and check for line
+   - Automatically switch to line following
+   - Follow black line indefinitely
 
 ---
 
 ## Demo Video
 
-**[https://www.linkedin.com/posts/muhammad-umar-470205377_robotics-esp32-embeddedsystems-ugcPost-7426727320171741184-qKT_?utm_source=share&utm_medium=member_desktop&rcm=ACoAAF0c7FQBAq2rTRdLSm2bP4Ak0SG9Vtf9ipY]**  
+**[VIDEO_LINK_HERE]**
 
-
-
----
-
-## How It Works: Detailed Logic
-
-### State 1: Wall Following Mode
-
-| Component | Purpose |
-|-----------|---------|
-| Two HC-SR04 Ultrasonic Sensors | Measure distance to wall from front and side |
-
-**Logic:** The robot maintains a constant distance from the wall. If it gets too close, it steers away. If it gets too far, it steers towards the wall.
-
-**Why two sensors?** Using two sonar sensors provides redundancy and allows the robot to "see" if the wall is angling towards or away from it, enabling smoother corrections compared to a single sensor.
-
-### The Transition Trigger (Wall Ends)
-
-The robot continuously monitors the front sonar sensor.
-
-| Condition | Action |
-|-----------|--------|
-| Front sonar reading > 100cm AND side sensor detects no wall | Robot deduces wall has ended → switches to `LINE_FOLLOW` mode |
-
-**Safety Feature:** A debounce timer requires 3 consistent readings over 200ms before switching states. This prevents false triggers from sensor noise or temporary gaps.
-
-### State 2: Line Following Mode
-
-| Component | Purpose |
-|-----------|---------|
-| 5-Channel IR Sensor Array | Detect position of black line on white surface |
-
-**Logic:** The ESP32 reads which sensors are over the line and adjusts motor speeds using **PID (Proportional-Integral-Derivative)** control to keep the robot centered.
-
-**Result:** Smooth, oscillation-free line following even at moderate speeds.
+*Replace with your YouTube link or upload demo_video.mp4 to this repository*
 
 ---
 
-## Hardware Components
+## Troubleshooting
 
-| Component | Quantity | Purpose |
-|-----------|----------|---------|
-| ESP32 Dev Board | 1 | Main microcontroller (computation, dual-core processing) |
-| HC-SR04 Ultrasonic Sensors | 2 | Wall detection and distance measurement |
-| 5-Channel IR Sensor Array | 1 | Line detection |
-| L298N Motor Driver | 1 | Controlling speed and direction of motors |
-| BO Motors with Wheels | 2 | Actuation / Movement |
-| Battery (7.4V - 12V) | 1 | Power supply |
+| Problem | Likely Fix |
+|---------|-------------|
+| Motors not moving | Check battery connection to L298N. ESP32 USB alone cannot power motors |
+| ESP32 keeps restarting | Use separate power for motors! Common issue |
+| Robot ignores line | Check IR sensor wiring. Adjust `WALL_FOLLOW_DELAY` if needed |
+| Wall following oscillates | Reduce `Kp` (try 1.5) or increase `Kd` (try 3.0) |
+| Line following zig-zags | Reduce `lineKp` (try 30) or increase `lineKd` (try 2.5) |
+| Ultrasonic readings unstable | The code already has EMA filter. Check sensor placement (avoid motor interference) |
 
 ---
 
@@ -72,47 +179,33 @@ The robot continuously monitors the front sonar sensor.
 
 | File | Description |
 |------|-------------|
-| `/code/robot_fsm.ino` | Main Arduino sketch with state machine logic |
-| `/code/sensor_calibration.ino` | Script to calibrate IR sensors and sonar thresholds |
-| `/wiring_diagram.png` | Schematic showing all connections |
-| `/demo_video.mp4` | Demonstration video (add your video file here) |
+| `robot.ino` | Complete Arduino sketch (wall-follow + line-follow + state machine) |
+| `README.md` | This file - all documentation |
+| `demo_video.mp4` | Demonstration video (add yours here) |
+
+**Note:** No separate calibration file needed! All calibration constants are at the top of `robot.ino` in the "Speeds" and "PID settings" sections.
 
 ---
 
-## Wiring Diagram (Quick Reference)
+## Future Improvements
 
-| ESP32 Pin | Connected To |
-|-----------|---------------|
-| D2 | Trig Pin (Sonar 1 - Front) |
-| D3 | Echo Pin (Sonar 1 - Front) |
-| D4 | Trig Pin (Sonar 2 - Side) |
-| D5 | Echo Pin (Sonar 2 - Side) |
-| D12 | IR Sensor 1 (Leftmost) |
-| D13 | IR Sensor 2 |
-| D14 | IR Sensor 3 (Center) |
-| D15 | IR Sensor 4 |
-| D16 | IR Sensor 5 (Rightmost) |
-| D18 | L298N - IN1 |
-| D19 | L298N - IN2 |
-| D21 | L298N - IN3 |
-| D22 | L298N - IN4 |
-| D23 | L298N - ENA (PWM for speed control) |
-| D25 | L298N - ENB (PWM for speed control) |
-| GND | Common ground (ESP32, sensors, L298N) |
-| VIN / 5V | Power for sensors |
+- [ ] Add Bluetooth control for manual override
+- [ ] Implement adaptive speed (slower on turns)
+- [ ] Log sensor data to SD card for analysis
+- [ ] Add OLED display to show current mode and sensor values
 
 ---
 
-## How to Run This Project
+## Author
 
-### Prerequisites
-- Arduino IDE with ESP32 board support installed
-- Required libraries:
-  - `NewPing` (for ultrasonic sensors)
-  - `PID` (for line following, optional if you write your own)
+**[YOUR NAME]**  
+Introduction to Robotics – **[YOUR UNIVERSITY]**  
+**[SEMESTER / YEAR]**
 
-### Step-by-Step Instructions
+| Platform | Link |
+|----------|------|
+| GitHub | [github.com/YOUR_USERNAME](https://github.com/YOUR_USERNAME) |
+| LinkedIn | [linkedin.com/in/YOUR_NAME](https://linkedin.com/in/YOUR_NAME) |
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/[YOUR_USERNAME]/[YOUR_REPOSITORY_NAME].git
+---
+
