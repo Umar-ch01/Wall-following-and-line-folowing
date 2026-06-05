@@ -1,6 +1,8 @@
 # Autonomous Wall-Following to Line-Following Robot
 
-![Demo Video](https://drive.google.com/file/d/13YyQm-kN6D45qmC-4oXycSxImgixIGdW/view?usp=sharing)
+Demo Video link
+
+(https://drive.google.com/file/d/13YyQm-kN6D45qmC-4oXycSxImgixIGdW/view?usp=sharing)
 
 ---
 
